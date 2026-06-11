@@ -69,6 +69,12 @@ says which it is. The GitHub Actions job builds the **real** sample daily,
 force-pushes it to the `data` branch, regenerates the catalog, and publishes a
 Pages catalog. Each run *replaces* the store (rolling window), so it stays bounded.
 
+**Long-term archive:** the full multi-year analysis lives in a HuggingFace
+dataset repo, not GitHub. See **[RUNNING_THE_BACKFILL.md](RUNNING_THE_BACKFILL.md)**
+to run the resumable week-by-week backfill to
+[`nakas/nbm-conus-analysis`](https://huggingface.co/datasets/nakas/nbm-conus-analysis)
+(48 weeks done, ~250 remaining to the 2020-10 NBM data floor).
+
 > The **forecast** store — `(init_time, lead_day 1-7, y, x)`, ~7× the analysis
 > size — is too large for git. Build it with `scripts/build_forecast.py` to a
 > gitignored path and host it externally (HuggingFace / R2 / Source Cooperative)
