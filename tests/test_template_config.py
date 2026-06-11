@@ -17,7 +17,7 @@ def test_forecast_template_structure() -> None:
     assert tc.append_dim == "init_time"
     ds = tc.get_template(datetime(2025, 1, 3))
     assert dict(ds.sizes)["init_time"] == 3
-    assert dict(ds.sizes)["lead_day"] == 11
+    assert dict(ds.sizes)["lead_day"] == 7
     assert "valid_date" in ds.coords
     # valid_date convention: lead_day 1 of a 00z init == the init's own day.
     assert str(ds.valid_date.values[0, 0])[:10] == "2025-01-01"

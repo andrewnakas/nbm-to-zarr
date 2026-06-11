@@ -1,12 +1,12 @@
 """Region job for NBM CONUS forecast data.
 
-For each init time, for each lead-day d (1-11), for each variable, this selects
+For each init time, for each lead-day d (1-7), for each variable, this selects
 the GRIB messages whose forecast windows tile the 24 h block
 ``[24*(d-1), 24*d]``, byte-range-fetches them, and aggregates them into one daily
 value (mean/max/min/sum) on the Lambert grid.
 
-NBM lead cadence: hourly to ~f036, 3-hourly to ~f192, 6-hourly to f264 (verify
-per init via the idx; missing leads are logged and skipped, never fatal).
+NBM CONUS core lead cadence (verified live): hourly f001-f036, 3-hourly
+f039-f177 (no f037/f038). Missing leads are logged and skipped, never fatal.
 """
 
 from __future__ import annotations
@@ -37,22 +37,20 @@ CYCLE = 0  # 00z only
 def lead_hours_for_day(day: int) -> list[int]:
     """Forecast lead hours that fall within lead-day ``day``'s 24 h window.
 
-    Uses NBM's native cadence: hourly to f036, then 3-hourly to f192, then
-    6-hourly to f264. The exact set present is intersected with the idx at
-    fetch time, so over-listing here is harmless.
+    NBM CONUS ``core`` cadence (verified against the live AWS bucket, 2025-2026):
+    hourly f001-f036, then 3-hourly f039-f177 (note: there is NO f037 or f038;
+    the gap is real). Max lead is f177 -> 7 full lead-days + a partial day 8 we
+    don't keep. The exact set present is re-checked against each idx at fetch
+    time, so a missing lead is simply skipped.
     """
     lo, hi = 24 * (day - 1), 24 * day
-    hours: list[int] = []
-    for h in range(0, 265):
-        if h < 36:
-            step_ok = True
-        elif h <= 192:
-            step_ok = h % 3 == 0
-        else:
-            step_ok = h % 6 == 0
-        if step_ok and lo < h <= hi:
-            hours.append(h)
-    return hours
+    return [h for h in AVAILABLE_LEADS if lo < h <= hi]
+
+
+# Authoritative list of NBM CONUS core lead hours (see lead_hours_for_day).
+AVAILABLE_LEADS: list[int] = list(range(1, 37)) + list(range(39, 178, 3))
+# Full lead-days fully covered by available leads (day d needs hour 24*d present).
+MAX_LEAD_HOUR = AVAILABLE_LEADS[-1]  # 177
 
 
 class NbmForecastSourceFileCoord(SourceFileCoord):
@@ -180,8 +178,10 @@ class NbmForecastRegionJob(RegionJob):
             init64 = np.datetime64(init).astype("datetime64[ns]")
             init_idx = self._init_index[init64]
             for day in range(1, N_LEAD_DAYS + 1):
-                leads = lead_hours_for_day(day)
                 for nbm_var, var_cfg in var_pairs:
+                    # Accumulations (precip) tile the day with 6 h windows on the
+                    # 6-hourly leads; instantaneous/min/max vars use every lead.
+                    leads = nbm_var.accum_leads_for_day(day) or lead_hours_for_day(day)
                     fields: list[np.ndarray] = []
                     for lead in leads:
                         coord = NbmForecastSourceFileCoord(

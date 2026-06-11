@@ -16,10 +16,11 @@ venv/
 # OS
 .DS_Store
 
-# Local scratch / templates / full-resolution intermediate stores.
-# NOTE: the *short* committed sample (data/noaa-nbm-conus-analysis-sample.zarr)
-# is intentionally NOT ignored — that is the free GitHub-hosted dataset.
+# Local scratch / templates / large stores. All Zarr data is kept OFF main:
+# the full-res analysis sample is force-pushed to the `data` branch by CI, and
+# the forecast store is large -> external host. main is code + catalog only.
 /templates/
-data/_full_analysis_tmp.zarr/
+data/noaa-nbm-conus-analysis-sample.zarr/
+data/_analysis_sample_tmp.zarr/
 data/*forecast*.zarr/
 data/_*/

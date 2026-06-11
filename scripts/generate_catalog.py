@@ -16,6 +16,7 @@ from pathlib import Path
 import xarray as xr
 
 REPO = "andrewnakas/nbm-to-zarr"  # update if the repo is named differently
+DATA_BRANCH = "data"  # full-res sample is force-pushed to this branch
 DATA_DIR = Path("data")
 CATALOG_DIR = Path("catalog")
 
@@ -41,7 +42,7 @@ def _dataset_entry(zarr_path: Path) -> dict:
                 "end": str(ds[time_dim].max().values),
             },
             "zarr_path": str(zarr_path),
-            "zarr_url": f"https://raw.githubusercontent.com/{REPO}/main/{zarr_path}",
+            "zarr_url": f"https://raw.githubusercontent.com/{REPO}/{DATA_BRANCH}/{zarr_path}",
         }
     finally:
         ds.close()

@@ -3,10 +3,10 @@
 > Reformat NOAA's **National Blend of Models (NBM)** into Zarr — a **forecast**
 > product and a matching **historical analysis** product — following the
 > [dynamical.org](https://dynamical.org) reformatter architecture. The short
-> analysis sample is hosted **for free, directly in this GitHub repo**.
+> full-res analysis sample is hosted **for free on GitHub** (the `data` branch).
 
-NBM is NOAA's 2.5 km calibrated CONUS blend with leads out to 264 h (11 days),
-but it only exists as per-init GRIB2 on AWS — nobody has reformatted it to Zarr
+NBM is NOAA's 2.5 km calibrated CONUS blend; its `core` product runs to f177
+(~7.4 days), but it only exists as per-init GRIB2 on AWS — nobody has reformatted it to Zarr
 (dynamical.org doesn't carry it). This project does, with the **same
 `TemplateConfig` / `RegionJob` / `Dataset` structure** dynamical uses, so both
 the forecast and the analysis variants are drop-in familiar.
@@ -15,7 +15,7 @@ the forecast and the analysis variants are drop-in familiar.
 
 | Dataset ID | Layout | What it is |
 |---|---|---|
-| `noaa-nbm-conus-forecast` | `(init_time, lead_day, y, x)` | Per-init forecast, daily-aggregated lead days 1–11 |
+| `noaa-nbm-conus-forecast` | `(init_time, lead_day, y, x)` | Per-init forecast, daily-aggregated lead days 1–7 |
 | `noaa-nbm-conus-analysis` | `(time, y, x)` | Daily **best-estimate-at-valid-time** series |
 
 Both share the native NBM Lambert-conformal grid (`y`, `x` + 2D
@@ -41,39 +41,44 @@ Past ~day 3, NBM's 2.5 km grid carries statistically downscaled *global-ensemble
 information — terrain-aware texture and calibration, not fresh 2.5 km physics.
 It's still the best available product of its kind; we just don't oversell it.
 
-## Hosting: a short analysis dataset, free on GitHub
+## Hosting: a short, full-resolution analysis dataset, free on GitHub
 
-You asked whether the analysis data could live somewhere free instead of an
-external object store. **Yes — and it's already wired up.** The full-resolution
-NBM grid is ~75 MB/day, too big to keep many days of in git. But a **spatially
-coarsened, short** analysis Zarr is a few MB, which fits comfortably in a git
-repo (well under GitHub's 100 MB/file cap), with **no object store, no Git LFS,
-and no egress bills**.
+The analysis data lives **on GitHub itself** — no external object store. We keep
+it at **full native resolution** (~2.5 km, 2345 × 1597) but **short**: a rolling
+**last 7 days** (~110 MB of real data). Zarr splits each field into many small
+zstd-compressed chunk files (512 × 512, each well under 1 MB), so the per-file
+100 MB cap is never near — **no object store, no Git LFS, no egress bills**.
+
+To avoid growing `main`'s history, CI force-pushes the store to a dedicated
+**`data` branch** as a single fresh commit each day (one snapshot, no
+accumulation). `main` stays code + catalog only. Open the data straight from
+that branch's raw URL (see the example below).
 
 ```bash
 # Build the committed sample (synthetic by default — runs anywhere, no GRIB libs)
-python scripts/build_sample_analysis.py --days 14 --coarsen 10
-# → data/noaa-nbm-conus-analysis-sample.zarr  (~3.6 MB, committed to the repo)
+python scripts/build_sample_analysis.py --days 7
+# → data/noaa-nbm-conus-analysis-sample.zarr  (full-res, last 7 days)
 
-# Build a REAL coarsened sample (needs network + eccodes)
-python scripts/build_sample_analysis.py --real --days 14 --coarsen 10
+# Build it from REAL NBM data (needs network + eccodes)
+python scripts/build_sample_analysis.py --real --days 7 --end 2026-06-10
 ```
 
-The committed sample ships **synthetic values with a real schema/coords** so the
-repo always has a working, openable demo and tests run offline; the `data_status`
-attr says which it is. A GitHub Actions job rebuilds it daily, regenerates the
-catalog, and (via GitHub Pages) publishes a discoverable catalog page.
+The synthetic build ships **real schema/coords/grid with generated values**, so
+tests run offline and you can produce a store anywhere; the `data_status` attr
+says which it is. The GitHub Actions job builds the **real** sample daily,
+force-pushes it to the `data` branch, regenerates the catalog, and publishes a
+Pages catalog. Each run *replaces* the store (rolling window), so it stays bounded.
 
-> Where to host the *full* 1-year archive (8–90 GB) when you want it: a
-> HuggingFace dataset repo, Cloudflare R2, or Source Cooperative (where
-> dynamical hosts). GitHub is the right home only for the **short** sample —
-> which is exactly what this repo commits.
+> The **forecast** store — `(init_time, lead_day 1-7, y, x)`, ~7× the analysis
+> size — is too large for git. Build it with `scripts/build_forecast.py` to a
+> gitignored path and host it externally (HuggingFace / R2 / Source Cooperative)
+> when you want the full archive.
 
 ```python
 import xarray as xr
 
 # Open the GitHub-hosted short analysis sample
-url = "https://raw.githubusercontent.com/andrewnakas/nbm-to-zarr/main/data/noaa-nbm-conus-analysis-sample.zarr"
+url = "https://raw.githubusercontent.com/andrewnakas/nbm-to-zarr/data/data/noaa-nbm-conus-analysis-sample.zarr"
 ds = xr.open_zarr(url)            # or a local path
 print(ds)                         # (time, y, x) with tmean/tmax/tmin/precip/srad
 ds["tmean"].isel(time=0).plot()   # terrain-aware CONUS field
@@ -137,7 +142,7 @@ catalog, and tests all run without it.
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
-pytest -q          # 21 tests, no network/GRIB needed
+pytest -q          # 23 tests, no network/GRIB needed
 ruff check src/
 ```
 

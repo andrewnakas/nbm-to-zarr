@@ -9,8 +9,8 @@ on:
       mode:
         description: "Sample build mode"
         type: choice
-        options: [synthetic, real]
-        default: synthetic
+        options: [real, synthetic]
+        default: real
   push:
     branches: [main]
 
@@ -36,53 +36,73 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install package (synthetic path needs no GRIB libs)
+      - name: Install package + eccodes (real GRIB decode)
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
-
-      - name: Install eccodes (only for real data builds)
-        if: ${{ github.event.inputs.mode == 'real' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libeccodes0 libeccodes-dev
           python -m pip install eccodes cfgrib
 
-      - name: Build short analysis sample (committed to repo = free hosting)
+      - name: Build short full-res analysis sample (last 7 days, committed = free hosting)
         run: |
           mkdir -p data
-          if [ "${{ github.event.inputs.mode }}" = "real" ]; then
-            python scripts/build_sample_analysis.py --real --days 14 --coarsen 10
+          if [ "${{ github.event.inputs.mode }}" = "synthetic" ]; then
+            python scripts/build_sample_analysis.py --days 7
           else
-            python scripts/build_sample_analysis.py --days 14 --coarsen 10
+            python scripts/build_sample_analysis.py --real --days 7
           fi
 
-      - name: Verify sample opens and is small enough for GitHub
+      - name: Verify sample opens and chunks fit GitHub's per-file cap
         run: |
           python - <<'PY'
           import xarray as xr, pathlib
           p = pathlib.Path("data/noaa-nbm-conus-analysis-sample.zarr")
           ds = xr.open_zarr(p)
           assert ds.sizes["time"] >= 1, "no time steps"
+          assert ds.sizes["y"] == 1597 and ds.sizes["x"] == 2345, "not full resolution"
           assert "tmean" in ds.data_vars, "missing tmean"
-          size = sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) / 1e6
-          print(f"sample: {dict(ds.sizes)}  {size:.2f} MB")
-          assert size < 90, f"sample too large for git: {size:.1f} MB"
+          total = sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) / 1e6
+          largest = max(f.stat().st_size for f in p.rglob("*") if f.is_file()) / 1e6
+          print(f"sample: {dict(ds.sizes)}  total {total:.1f} MB, largest chunk {largest:.2f} MB")
+          assert largest < 95, f"a chunk is {largest:.1f} MB — near GitHub's 100 MB cap"
           PY
 
       - name: Generate catalog (JSON + HTML)
         run: python scripts/generate_catalog.py
 
-      - name: Commit sample + catalog
+      # Publish the full-res sample to a dedicated `data` branch that we
+      # FORCE-PUSH as a single fresh commit each run. This hosts ~180 MB on
+      # GitHub without growing history unboundedly (main stays code-only) — the
+      # failure mode that sank an earlier NBM repo. Catalog goes to main.
+      - name: Publish data to force-pushed `data` branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/noaa-nbm-conus-analysis-sample.zarr catalog/
+          tmp=$(mktemp -d)
+          cp -r data/noaa-nbm-conus-analysis-sample.zarr "$tmp/"
+          cp -r catalog "$tmp/"
+          git checkout --orphan data-fresh
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          rm -rf data
+          mkdir -p data
+          cp -r "$tmp/noaa-nbm-conus-analysis-sample.zarr" data/
+          cp -r "$tmp/catalog" catalog
+          echo "# NBM analysis data branch (force-pushed each run; no history)" > README.md
+          git add -f data/noaa-nbm-conus-analysis-sample.zarr catalog README.md
+          git commit -m "NBM analysis sample (full-res, last 7 days) $(date -u +'%Y-%m-%d')"
+          git branch -M data-fresh data
+          git push -f origin data
+
+      - name: Commit catalog to main
+        run: |
+          git checkout main || git checkout -b main
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add catalog/
           if ! git diff --staged --quiet; then
-            git commit -m "Update NBM analysis sample + catalog ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git commit -m "Update catalog ($(date -u +'%Y-%m-%d %H:%M UTC'))"
             git push
           else
-            echo "No changes to commit"
+            echo "No catalog changes"
           fi
 
       - name: Upload catalog for Pages

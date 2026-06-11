@@ -49,12 +49,14 @@ class NbmVariable:
     window_contains: str | None = None
     # True for ensemble std-dev channels (matched on "ens std dev" in extra).
     is_ens_std: bool = False
-    # For accumulations (APCP): NBM publishes overlapping windows at the same
-    # lead (e.g. f024 has both "23-24" and "18-24" acc). To sum cleanly to a 24 h
-    # total we must pick exactly ONE non-overlapping tiling. When True, match
-    # only the 1-hour increment "(lead-1)-lead hour acc fcst", so the 24 hourly
-    # pieces tile [0,24] with no double counting.
-    single_hour_accum: bool = False
+    # For accumulations (APCP): NBM publishes several overlapping windows at the
+    # same lead (e.g. f024 has both "23-24" 1 h and "18-24" 6 h acc). To sum
+    # cleanly to a 24 h total we pick exactly ONE non-overlapping tiling. When
+    # set, match only the "(lead-N)-lead hour acc fcst" window of this width N.
+    # We use N=6: a 6 h window exists at every 6-hourly lead f006..f174, so four
+    # of them tile each 24 h lead-day exactly — and, unlike the 1 h windows,
+    # they have no gaps in NBM's 3-hourly lead range (f039+).
+    accum_window_hours: int | None = None
 
     def to_config(self, chunks: dict[str, int]) -> DataVariableConfig:
         return DataVariableConfig(
@@ -69,8 +71,8 @@ class NbmVariable:
     def matches(self, var: str, level: str, raw: str, lead_hour: int | None = None) -> bool:
         """True if a parsed idx line corresponds to this variable.
 
-        ``lead_hour`` is required for ``single_hour_accum`` variables so the
-        exact 1-hour accumulation window can be selected.
+        ``lead_hour`` is required for accumulation variables so the exact window
+        ("(lead - accum_window_hours)-lead hour acc fcst") can be selected.
         """
         if var != self.grib_var or level != self.grib_level:
             return False
@@ -80,12 +82,25 @@ class NbmVariable:
             return False
         if self.window_contains and self.window_contains not in raw:
             return False
-        if self.single_hour_accum:
+        if self.accum_window_hours is not None:
             if lead_hour is None:
                 return False
-            if f"{lead_hour - 1}-{lead_hour} hour acc fcst" not in raw:
+            window = f"{lead_hour - self.accum_window_hours}-{lead_hour} hour acc fcst"
+            if window not in raw:
                 return False
         return True
+
+    def accum_leads_for_day(self, day: int) -> list[int] | None:
+        """For accumulation vars, the leads whose windows tile lead-day ``day``.
+
+        Returns the 6-hourly leads (e.g. day 1 -> [6, 12, 18, 24]) or None for
+        non-accumulation variables.
+        """
+        if self.accum_window_hours is None:
+            return None
+        n = self.accum_window_hours
+        lo, hi = 24 * (day - 1), 24 * day
+        return list(range(lo + n, hi + 1, n))
 
 
 # Core daily-aggregate variables (the bottom rung — matches the plan §1).
@@ -134,7 +149,7 @@ CORE_VARIABLES: list[NbmVariable] = [
         long_name="Daily total precipitation",
         standard_name="precipitation_amount",
         window_contains="acc fcst",
-        single_hour_accum=True,
+        accum_window_hours=6,
         keepbits=10,
         # APCP is already kg/m^2 == mm; no rate conversion (unlike GFS).
     ),

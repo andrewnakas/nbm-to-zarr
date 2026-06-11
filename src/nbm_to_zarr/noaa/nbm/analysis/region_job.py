@@ -136,7 +136,6 @@ class NbmAnalysisRegionJob(RegionJob):
             np.datetime64(d).astype("datetime64[ns]"): i
             for i, d in enumerate(self._days())
         }
-        leads = lead_hours_for_day(1)
         logger.info(
             "NBM analysis region %s..%s: %d days × %d vars",
             self.processing_region.append_start,
@@ -147,6 +146,9 @@ class NbmAnalysisRegionJob(RegionJob):
         for day in self._days():
             day_idx = day_index[np.datetime64(day).astype("datetime64[ns]")]
             for nbm_var, var_cfg in var_pairs:
+                # Best estimate = lead-day-1 aggregate of this day's 00z init.
+                # Precip tiles day 1 with 6 h windows; other vars use every lead.
+                leads = nbm_var.accum_leads_for_day(1) or lead_hours_for_day(1)
                 fields: list[np.ndarray] = []
                 for lead in leads:
                     coord = NbmAnalysisSourceFileCoord(valid_date=day, lead_hour=lead)

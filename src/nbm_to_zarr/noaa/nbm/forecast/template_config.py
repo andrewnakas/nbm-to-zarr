@@ -1,7 +1,7 @@
 """Template configuration for NBM CONUS forecast data.
 
 Layout mirrors dynamical.org forecast zarrs: an ``init_time`` append dimension,
-a forecast-lead dimension (here ``lead_day`` 1-11 instead of hourly ``step``,
+a forecast-lead dimension (here ``lead_day`` 1-7 instead of hourly ``step``,
 because the consumer is daily and native hourly leads would be ~1-2 TB), and the
 2D Lambert grid (``y``, ``x`` + 2D ``latitude``/``longitude`` + ``spatial_ref``).
 
@@ -26,7 +26,10 @@ from nbm_to_zarr.base.template_config import (
 from nbm_to_zarr.noaa.nbm import grid
 from nbm_to_zarr.noaa.nbm.variables import variable_set
 
-N_LEAD_DAYS = 11
+# NBM CONUS core reaches f177 (verified live): hourly f001-f036, 3-hourly to
+# f177. That is 7 fully-covered 24 h lead-days (day 7 closes at f168); f177 is a
+# partial day 8 we don't keep.
+N_LEAD_DAYS = 7
 
 
 class NbmForecastTemplateConfig(TemplateConfig):
@@ -46,14 +49,15 @@ class NbmForecastTemplateConfig(TemplateConfig):
     def dataset_attributes(self) -> DatasetAttributes:
         return DatasetAttributes(
             id="noaa-nbm-conus-forecast",
-            title="NOAA NBM CONUS Forecast (daily, lead days 1-11)",
+            title="NOAA NBM CONUS Forecast (daily, lead days 1-7)",
             description=(
                 "National Blend of Models (NBM) CONUS forecast, 00z cycle, "
-                "daily-aggregated lead days 1-11 on the native ~2.5 km Lambert "
-                "conformal grid. Variables: tmean/tmax/tmin (degC), precip (mm), "
-                "srad (MJ/m^2/day). Honest note: past ~day 3 the 2.5 km grid "
-                "carries statistically downscaled global-ensemble information — "
-                "terrain-aware texture and calibration, not fresh 2.5 km physics."
+                "daily-aggregated lead days 1-7 on the native ~2.5 km Lambert "
+                "conformal grid (the core product reaches f177). Variables: "
+                "tmean/tmax/tmin (degC), precip (mm), srad (MJ/m^2/day). Honest "
+                "note: past ~day 3 the 2.5 km grid carries statistically "
+                "downscaled global-ensemble information — terrain-aware texture "
+                "and calibration, not fresh 2.5 km physics."
             ),
             version="0.1.0",
             provider="NOAA",
@@ -118,7 +122,7 @@ class NbmForecastTemplateConfig(TemplateConfig):
                 standard_name="forecast_reference_time",
             ),
             "lead_day": CoordinateConfig(
-                dtype="int32", units="days", long_name="Forecast lead day (1-11)",
+                dtype="int32", units="days", long_name="Forecast lead day (1-7)",
             ),
             "y": CoordinateConfig(
                 dtype="float64", units="meters",

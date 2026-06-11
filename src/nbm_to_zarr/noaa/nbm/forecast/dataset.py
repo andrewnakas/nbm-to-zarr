@@ -8,7 +8,7 @@ from nbm_to_zarr.noaa.nbm.forecast.template_config import NbmForecastTemplateCon
 
 
 class NbmForecastDataset(Dataset):
-    """NBM CONUS forecast dataset (per-init, daily lead days 1-11)."""
+    """NBM CONUS forecast dataset (per-init, daily lead days 1-7)."""
 
     def __init__(self, include_std: bool = False) -> None:
         self._tc = NbmForecastTemplateConfig(include_std=include_std)
