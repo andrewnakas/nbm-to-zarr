@@ -1,0 +1,10 @@
+{
+  "units": "degC",
+  "long_name": "Daily mean 2 m temperature",
+  "coordinates": "latitude longitude spatial_ref",
+  "_ARRAY_DIMENSIONS": [
+    "time",
+    "y",
+    "x"
+  ]
+}

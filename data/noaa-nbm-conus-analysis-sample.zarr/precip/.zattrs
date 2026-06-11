@@ -1,0 +1,10 @@
+{
+  "units": "mm",
+  "long_name": "Daily total precipitation",
+  "coordinates": "latitude longitude spatial_ref",
+  "_ARRAY_DIMENSIONS": [
+    "time",
+    "y",
+    "x"
+  ]
+}

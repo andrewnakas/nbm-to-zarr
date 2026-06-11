@@ -1,0 +1,98 @@
+name: Update NBM Analysis Sample + Catalog
+
+on:
+  schedule:
+    # Daily, after the 00z NBM run is fully available (~07-08 UTC).
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Sample build mode"
+        type: choice
+        options: [synthetic, real]
+        default: synthetic
+  push:
+    branches: [main]
+
+concurrency:
+  group: nbm-data
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install package (synthetic path needs no GRIB libs)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Install eccodes (only for real data builds)
+        if: ${{ github.event.inputs.mode == 'real' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeccodes0 libeccodes-dev
+          python -m pip install eccodes cfgrib
+
+      - name: Build short analysis sample (committed to repo = free hosting)
+        run: |
+          mkdir -p data
+          if [ "${{ github.event.inputs.mode }}" = "real" ]; then
+            python scripts/build_sample_analysis.py --real --days 14 --coarsen 10
+          else
+            python scripts/build_sample_analysis.py --days 14 --coarsen 10
+          fi
+
+      - name: Verify sample opens and is small enough for GitHub
+        run: |
+          python - <<'PY'
+          import xarray as xr, pathlib
+          p = pathlib.Path("data/noaa-nbm-conus-analysis-sample.zarr")
+          ds = xr.open_zarr(p)
+          assert ds.sizes["time"] >= 1, "no time steps"
+          assert "tmean" in ds.data_vars, "missing tmean"
+          size = sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) / 1e6
+          print(f"sample: {dict(ds.sizes)}  {size:.2f} MB")
+          assert size < 90, f"sample too large for git: {size:.1f} MB"
+          PY
+
+      - name: Generate catalog (JSON + HTML)
+        run: python scripts/generate_catalog.py
+
+      - name: Commit sample + catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f data/noaa-nbm-conus-analysis-sample.zarr catalog/
+          if ! git diff --staged --quiet; then
+            git commit -m "Update NBM analysis sample + catalog ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Upload catalog for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./catalog
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/configure-pages@v4
+      - uses: actions/deploy-pages@v4

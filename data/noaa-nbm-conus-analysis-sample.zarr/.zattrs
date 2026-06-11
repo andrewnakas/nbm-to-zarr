@@ -1,0 +1,16 @@
+{
+  "id": "noaa-nbm-conus-analysis-sample",
+  "title": "NOAA NBM CONUS Analysis \u2014 short sample (GitHub-hosted)",
+  "description": "National Blend of Models (NBM) CONUS daily historical analysis: one best-estimate value per calendar day on the native ~2.5 km Lambert conformal grid. Built from lead-day 1 of each 00z NBM forecast (shortest lead valid on the day). Variables: tmean/tmax/tmin (degC), precip (mm), srad (MJ/m^2/day).",
+  "version": "0.1.0",
+  "provider": "NOAA",
+  "model": "NBM",
+  "variant": "conus-analysis",
+  "analysis_construction": "Best estimate for day D = lead_day 1 of the 00z init on day D.",
+  "source": "https://noaa-nbm-grib2-pds.s3.amazonaws.com/",
+  "license": "CC-BY-4.0 (derived); source NOAA NBM is public domain",
+  "attribution": "NOAA NBM via AWS Open Data; layout inspired by dynamical.org",
+  "spatial_coarsening": "10x strided from native ~2.5 km grid",
+  "hosting": "Committed directly to this GitHub repo (free, no object store)",
+  "data_status": "SYNTHETIC demo data \u2014 schema/coords are real, values are generated. Run build_sample_analysis.py --real to publish a real sample."
+}

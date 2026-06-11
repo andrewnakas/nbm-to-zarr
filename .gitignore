@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+
+# Local scratch / templates / full-resolution intermediate stores.
+# NOTE: the *short* committed sample (data/noaa-nbm-conus-analysis-sample.zarr)
+# is intentionally NOT ignored — that is the free GitHub-hosted dataset.
+/templates/
+data/_full_analysis_tmp.zarr/
+data/*forecast*.zarr/
+data/_*/
