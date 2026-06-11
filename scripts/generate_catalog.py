@@ -59,6 +59,10 @@ def generate() -> None:
     }
 
     for zarr_path in sorted(DATA_DIR.glob("*.zarr")):
+        # Only the published sample is cataloged — skip scratch (_-prefixed) and
+        # the large forecast store, which are not hosted on the data branch.
+        if zarr_path.name.startswith("_") or "forecast" in zarr_path.name:
+            continue
         if not (zarr_path / ".zmetadata").exists() and not (zarr_path / "zarr.json").exists():
             # Fall back: any dir with a .zarray inside is a v2 store.
             if not any(zarr_path.rglob(".zarray")):

@@ -1,44 +1,8 @@
 {
   "title": "NBM to Zarr \u2014 Data Catalog",
   "description": "NOAA NBM CONUS forecast & historical analysis reformatted to Zarr.",
-  "generated": "2026-06-11T07:03:18.251021+00:00",
+  "generated": "2026-06-11T07:06:43.201321+00:00",
   "datasets": [
-    {
-      "id": "noaa-nbm-conus-analysis",
-      "title": "NOAA NBM CONUS Historical Analysis (daily best estimate)",
-      "description": "National Blend of Models (NBM) CONUS daily historical analysis: one best-estimate value per calendar day on the native ~2.5 km Lambert conformal grid. Built from lead-day 1 of each 00z NBM forecast (shortest lead valid on the day). Variables: tmean/tmax/tmin (degC), precip (mm), srad (MJ/m^2/day).",
-      "provider": "NOAA",
-      "model": "NBM",
-      "variant": "conus-analysis",
-      "data_status": "",
-      "hosting": "",
-      "dimensions": {
-        "time": 7,
-        "y": 1597,
-        "x": 2345
-      },
-      "variables": [
-        "precip",
-        "srad",
-        "tmax",
-        "tmean",
-        "tmin"
-      ],
-      "coordinates": [
-        "latitude",
-        "longitude",
-        "spatial_ref",
-        "time",
-        "x",
-        "y"
-      ],
-      "temporal_extent": {
-        "start": "2026-06-04T00:00:00.000000000",
-        "end": "2026-06-10T00:00:00.000000000"
-      },
-      "zarr_path": "data/_analysis_sample_tmp.zarr",
-      "zarr_url": "https://raw.githubusercontent.com/andrewnakas/nbm-to-zarr/data/data/_analysis_sample_tmp.zarr"
-    },
     {
       "id": "noaa-nbm-conus-analysis-sample",
       "title": "NOAA NBM CONUS Analysis \u2014 short sample (full-res, GitHub-hosted)",
