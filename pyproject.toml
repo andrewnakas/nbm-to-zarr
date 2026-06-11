@@ -21,6 +21,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+hf = [
+    "huggingface_hub>=0.20",
+    "fsspec>=2024.1.0",
+    "aiohttp>=3.9.0",
+]
 dev = [
     "ruff>=0.2.0",
     "mypy>=1.8.0",
