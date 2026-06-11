@@ -24,3 +24,6 @@ data/noaa-nbm-conus-analysis-sample.zarr/
 data/_analysis_sample_tmp.zarr/
 data/*forecast*.zarr/
 data/_*/
+
+# Backfill logs
+logs/
