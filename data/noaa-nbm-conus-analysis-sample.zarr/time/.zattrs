@@ -1,0 +1,9 @@
+{
+  "long_name": "Valid date (analysis)",
+  "standard_name": "time",
+  "units": "days since 2026-06-07",
+  "calendar": "proleptic_gregorian",
+  "_ARRAY_DIMENSIONS": [
+    "time"
+  ]
+}

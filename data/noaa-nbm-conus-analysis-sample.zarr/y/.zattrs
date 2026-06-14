@@ -1,0 +1,8 @@
+{
+  "units": "meters",
+  "long_name": "Y coordinate (Lambert conformal projection)",
+  "standard_name": "projection_y_coordinate",
+  "_ARRAY_DIMENSIONS": [
+    "y"
+  ]
+}
