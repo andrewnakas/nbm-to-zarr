@@ -1,0 +1,11 @@
+{
+  "units": "MJ m-2 day-1",
+  "long_name": "Daily mean downward shortwave radiation as daily energy",
+  "standard_name": "surface_downwelling_shortwave_flux_in_air",
+  "coordinates": "latitude longitude spatial_ref",
+  "_ARRAY_DIMENSIONS": [
+    "time",
+    "y",
+    "x"
+  ]
+}
